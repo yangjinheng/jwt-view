@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"strings"
 
 	jwt "github.com/cristalhq/jwt/v3"
@@ -10,77 +10,85 @@ import (
 	. "github.com/lxn/walk/declarative"
 )
 
-type MyMainWindow struct {
-	*walk.MainWindow
-	searchBox *walk.LineEdit
-	header    *walk.TextEdit
-	payload   *walk.TextEdit
-	signature *walk.TextEdit
-}
-
 func main() {
-	mw := &MyMainWindow{}
-	MainWindow{
-		AssignTo: &mw.MainWindow,
+	var (
+		mainWindow *walk.MainWindow
+		searchBox  *walk.LineEdit
+		header     *walk.TextEdit
+		payload    *walk.TextEdit
+		signature  *walk.TextEdit
+	)
+
+	var Font Font = Font{
+		Family:    "Consolas",
+		PointSize: 10,
+	}
+
+	err := MainWindow{
+		AssignTo: &mainWindow,
 		Title:    "JWT Token View",
-		MinSize:  Size{640, 320},
-		Size:     Size{640, 320},
+		Size:     Size{Width: 700, Height: 600},
 		Layout:   VBox{},
 		Children: []Widget{
-			GroupBox{
-				Layout: HBox{},
+			Composite{
+				Layout: HBox{MarginsZero: true},
 				Children: []Widget{
 					LineEdit{
-						AssignTo: &mw.searchBox,
-						Text:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-						Row:      5,
+						AssignTo: &searchBox,
+						Text:     "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJJeXhNSThiVXIwcFlUSEkzbXdUS2lXRkU3QmtjVWlyNkdwbWRtVzhIVU9RIn0.eyJleHAiOjE1ODU5MjUyMzYsImlhdCI6MTU4NTkyNTE3NiwiYXV0aF90aW1lIjoxNTg1OTI0ODMzLCJqdGkiOiIyNDE0ZTZhOC1hODgyLTQ4ZGYtOWE0My1kZWI3ZWRkMzY5ZjgiLCJpc3MiOiJodHRwOi8vMTcyLjE2LjEwMC4xMDo4MDgwL2F1dGgvcmVhbG1zL21hc3RlciIsImF1ZCI6ImFjY291bnQiLCJzdWIiOiIzOTg4MDZiNS1hY2ZlLTQyNjAtOTE4Mi1iZDc5NTgxMjJhNTYiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJrb25nIiwic2Vzc2lvbl9zdGF0ZSI6IjZlZDAxMmZmLWU2MzAtNDBjZS04NmU3LTI0ZDNhNTBiYTI2MSIsImFjciI6IjAiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIGVtYWlsIHByb2ZpbGUiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicHJlZmVycmVkX3VzZXJuYW1lIjoiamluaGVuZyJ9.Zo0ZXymHbCGuv_IjGe32rVzkTm5fAYNn5eVONc_Pot1S6fMd-AASn-1w4hyOYSLWrGQGzR5Okoc-TEloVvDVsax-K29_VQsoq2UcKK9His4Cnth1nWO4NK7oTvOUHM3axFr48Fo-mjmW-mqMBk4krGGEbGDq9saXlrgWgc-n-Zn_91qvi5ncSf33oy-fnOFY-_YWZxykFySEXZ1bvPlzkut7gVAPF7f4IAtuwoPy2RFHTy0QKUUWUufoLXnvu1XZwFJTt4enuCliY_mD9kV6nghdfu9tii4TJHcv1bc_7Z4FX_ywvGkgb4aUx76697Z9SlOVqMtED8JziSC1Na0-qg",
+						Font:     Font,
 					},
 					PushButton{
-						Text:      "查看",
-						OnClicked: mw.clicked,
+						Text: "查看",
+						OnClicked: func() {
+							input := searchBox.Text()
+							token, err := jwt.ParseString(input)
+							if err != nil {
+								return
+							}
+							data, err := json.MarshalIndent(token.Header(), "", "  ")
+							if err != nil {
+								return
+							}
+							header.SetText(strings.Replace(string(data), "\n", "\r\n", -1))
+							pack := map[string]interface{}{}
+							err = json.Unmarshal(token.RawClaims(), &pack)
+							if err != nil {
+								return
+							}
+							result, _ := json.MarshalIndent(pack, "", "  ")
+							payload.SetText(strings.Replace(string(result), "\n", "\r\n", -1))
+							signature.SetText("未开发")
+						},
 					},
 				},
 			},
-			GroupBox{
-				Layout: VBox{},
-				Children: []Widget{
-					TextEdit{
-						AssignTo: &mw.header,
-						MinSize:  Size{320, 80},
-						Row:      2,
-					},
-					TextEdit{
-						AssignTo: &mw.payload,
-						MinSize:  Size{320, 320},
-						Row:      10,
-					},
-					TextEdit{
-						AssignTo: &mw.signature,
-					},
-				},
-			},
-		},
-	}.Run()
-}
 
-func (mw *MyMainWindow) clicked() {
-	input := mw.searchBox.Text()
-	token, err := jwt.ParseString(input)
+			TextEdit{
+				AssignTo: &header,
+				Font:     Font,
+				MinSize:  Size{Height: 100},
+				VScroll:  true,
+			},
+			TextEdit{
+				AssignTo: &payload,
+				Font:     Font,
+				MinSize:  Size{Height: 500},
+				VScroll:  true,
+			},
+			TextEdit{
+				AssignTo: &signature,
+				Font:     Font,
+				VScroll:  true,
+			},
+			// 	},
+			// },
+		},
+	}.Create()
+
 	if err != nil {
-		return
+		log.Fatal(err)
 	}
-	header, err := json.MarshalIndent(token.Header(), "", "    ")
-	if err != nil {
-		return
-	}
-	mw.header.SetText(strings.Replace(string(header), "\n", "\r\n", -1))
-	fmt.Println(string(header))
-	pack := map[string]interface{}{}
-	err = json.Unmarshal(token.RawClaims(), &pack)
-	if err != nil {
-		return
-	}
-	payload, _ := json.MarshalIndent(pack, "", "    ")
-	mw.payload.SetText(strings.Replace(string(payload), "\n", "\r\n", -1))
-	mw.signature.SetText("未开发")
+
+	mainWindow.Run()
 }
